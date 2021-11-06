@@ -1,6 +1,7 @@
 # maya_signatures/commands/scrape.py
 """The maya online help command signature scraping command."""
 
+import inspect
 from six import iteritems
 import requests
 from re import findall
@@ -13,11 +14,22 @@ from .cache import Memoize
 from bs4 import BeautifulSoup
 
 
+def get_commands_url(maya_version):
+    root = os.path.dirname(os.path.dirname(inspect.getframeinfo(inspect.currentframe()).filename))
+    commands_path = os.path.join(root, 'mayacommands', '{}.txt'.format(maya_version))
+    with open(commands_path, 'r') as fh:
+        lines = fh.readlines()
+        url = lines[0].rstrip()
+        if not url.endswith('/'):
+            url = '{}/'.format(url)
+        return url
+
+
 class Scrape(Base):
     """ Class responsible for handling Maya help doc command queries and returns function signatures.
     
     """
-    BASEURL = 'http://help.autodesk.com/cloudhelp/{MAYAVERSION}/ENU/Maya-Tech-Docs/CommandsPython/'
+    BASEURL = ''
     _EXTENSION = 'html'
     _URL_BUILDER = '{BASEURL}{COMMAND}.{EXT}'
     _CACHE_FILE = '%s.json' % __name__.split('.')[-1]
@@ -181,9 +193,8 @@ class Scrape(Base):
             :param command: str, valid maya command
             :return: str, url to the maya help lib for given command.
         """
-        return self._URL_BUILDER.format(BASEURL=self.BASEURL.format(MAYAVERSION=self.maya_version),
-                                        COMMAND=command,
-                                        EXT=self._EXTENSION)
+        self.BASEURL = self.BASEURL or get_commands_url(self.maya_version)
+        return self._URL_BUILDER.format(BASEURL=self.BASEURL, COMMAND=command, EXT=self._EXTENSION)
 
     def _write_tempfile(self):
         """ Writes instance data to the cache file.
