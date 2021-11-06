@@ -240,12 +240,10 @@ class Scrape(Base):
                 text = str(table_row.text.strip()).replace('\n', ' ')
                 # Might need refactoring later depending on how they format their flags/descriptions, but we'll see
                 if len(text.split('(')) == 2 and not ' ' in text:
-                    if total_added == 4:
+                    if total_added >= 4:
                         total_added = 0
                     elif total_added == 3:
                         data.append('')     # empty description
-                        total_added = 0
-                    elif total_added > 4:
                         total_added = 0
                     text = [t.replace(')', '') for t in text.split('(')]
                     data += text
