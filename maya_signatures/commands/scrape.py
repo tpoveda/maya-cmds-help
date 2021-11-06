@@ -78,6 +78,7 @@ class Scrape(Base):
         self._read_tempfile()
         for command in self.kwargs.get('MAYA_CMDS', []):
             self.query(command)
+        self.__cache.update(self.command_signatures)
         self._write_tempfile()
         return self.command_signatures
 
@@ -201,7 +202,7 @@ class Scrape(Base):
             :return: None
         """
         f = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        f.write(json.dumps(self.__cache, ensure_ascii=False, indent=4, sort_keys=True))
+        f.write(json.dumps(self.__cache, ensure_ascii=True, indent=4, sort_keys=True))
         file_name = f.name
         f.close()
         shutil.copy(file_name, self._CACHE_FILE)
@@ -226,8 +227,12 @@ class Scrape(Base):
                         flag name, short name, data type, description
         """
         signature_table = [table for table in soup_code_object.body.find_all('table')
-                           if 'Long name (short name)' in str(table.find_all('tr'))][0]
+                           if 'Long name (short name)' in str(table.find_all('tr'))]
+        signature_table = signature_table[0] if signature_table else None
+        if not signature_table:
+            return list()
 
+        total_added = 0
         data = []
         for table_row in signature_table.find_all('td'):
             # This is a ghetto way of checking whether it's the right row we want...but it works.
@@ -235,10 +240,26 @@ class Scrape(Base):
                 text = str(table_row.text.strip()).replace('\n', ' ')
                 # Might need refactoring later depending on how they format their flags/descriptions, but we'll see
                 if len(text.split('(')) == 2 and not ' ' in text:
+                    if total_added == 4:
+                        total_added = 0
+                    elif total_added == 3:
+                        data.append('')     # empty description
+                        total_added = 0
+                    elif total_added > 4:
+                        total_added = 0
                     text = [t.replace(')', '') for t in text.split('(')]
                     data += text
+                    total_added += 2
                 elif text:
-                    data.append(text)
+                    if total_added >= 4:
+                        data[-1] += '\n{}'.format(text)         # when tables are found
+                    else:
+                        data.append(text)
+                    total_added += 1
+
+        # this happens when the last argument in the doc has no description
+        if total_added == 3:
+            data.append('')
 
         return [data[x:x + 4] for x in range(0, len(data), 4)]
 

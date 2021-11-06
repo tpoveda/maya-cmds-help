@@ -37,17 +37,37 @@ def get_commands_list(maya_version):
         return [line.rstrip() for line in lines[1:]]
 
 
-def scrape(maya_version, maya_commands=None):
+def scrape(maya_version, maya_commands=None, clear=False):
     """ Generic entry point for ease of use, returns maya_signatures.commands.scrape.Scraper(<input>).query
     :param maya_version: Maya version whose commands we want to scrap.
     :param maya_commands: Commands to query and return
-    :return: 
+    :param clear:
+    :return:
     """
     global SCRAPER
     global CACHE
-    if SCRAPER is None:
+    if SCRAPER is None or clear:
         SCRAPER = Scrape(**{'--mayaversion': [maya_version]})
         CACHE = SCRAPER.cached
 
     maya_commands = maya_commands or get_commands_list(maya_version)
     SCRAPER.query(maya_commands)
+
+
+def run(maya_version, maya_commands=None):
+    """ Generic entry point for ease of use, returns maya_signatures.commands.scrape.Scraper(<input>).query
+    :param maya_version: Maya version whose commands we want to scrap.
+    :param maya_commands: Commands to query and return
+    :return:
+    """
+
+    global SCRAPER
+    global CACHE
+
+    maya_commands = maya_commands or get_commands_list(maya_version)
+
+    if SCRAPER is None:
+        SCRAPER = Scrape(**{'--mayaversion': [maya_version], 'MAYA_CMDS': maya_commands})
+        CACHE = SCRAPER.cached
+
+    SCRAPER.run()
